@@ -12,9 +12,29 @@ class DocumentView extends StatefulWidget {
 class _DocumentState extends State<DocumentView> {
   final TextEditingController _controllerTitle = TextEditingController();
   final TextEditingController _controllerContent = TextEditingController();
+  int selectionStart = -1;
+  int selectionEnd = -1;
+  int offsetBase = -1;
+  int offsetExtent = -1;
 
   void _backToMenu() {
     Navigator.pop(context);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controllerContent.addListener(() {
+      TextSelection selection = _controllerContent.selection;
+      if (selection.start > -1) selectionStart = selection.start;
+      if (selection.end > -1) selectionEnd = selection.end;
+      offsetBase = selection.baseOffset;
+      offsetExtent = selection.extentOffset;
+      print(selectionStart);
+      print(selectionEnd);
+      print(offsetBase);
+      print(offsetExtent);
+    });
   }
 
   @override

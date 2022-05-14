@@ -1,6 +1,5 @@
 // ignore_for_file: prefer_const_constructors
 import 'package:a_pad/main.dart';
-import 'package:a_pad/widgets/managecategories.dart';
 import 'package:flutter/material.dart';
 import 'managecategories.dart';
 

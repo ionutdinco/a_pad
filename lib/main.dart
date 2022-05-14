@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'widgets/sidemenu.dart';
-import 'widgets/newdocument.dart';
+import 'comp/sidemenu.dart';
+import 'comp/newdocument.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
