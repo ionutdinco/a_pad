@@ -1,103 +1,78 @@
+import 'dart:io';
 import 'dart:async';
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+part 'data_persistence.g.dart';
 
-class Note {
-  final int id;
-  final String title;
-  final String content;
-  final String lastUpdate;
-  static const String tablename = "notes";
-
-  const Note(
-      {required this.id,
-      required this.title,
-      required this.content,
-      required this.lastUpdate});
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-      'modified': lastUpdate
-    };
-  }
+@DriftDatabase(
+  // relative import for the drift file. Drift also supports `package:`
+  // imports
+  include: {'tables.drift'},
+)
+class AppDb extends _$AppDb {
+  AppDb() : super(_openConnection());
 
   @override
-  String toString() {
-    return toMap.toString();
+  int get schemaVersion => 1;
+}
+
+LazyDatabase _openConnection() {
+  // the LazyDatabase util lets us find the right location for the file async.
+  return LazyDatabase(() async {
+    // put the database file, called db.sqlite here, into the documents folder
+    // for your app.
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(join(dbFolder.path, 'db.sqlite'));
+    return NativeDatabase(file);
+  });
+}
+
+class DatabaseHelper extends AppDb {
+  // loads all todo entries
+
+  static final DatabaseHelper _singleton = DatabaseHelper._internal();
+
+  factory DatabaseHelper() {
+    return _singleton;
+  }
+
+  DatabaseHelper._internal();
+
+  Future<List<Note>> get allNoteEntries => select(notes).get();
+
+  Future<List<Note>> watchEntriesInCategory(String category) {
+    return (select(notes)..where((t) => t.category.equals(category))).get();
+  }
+
+  Future<Note> getEntryById(int id) {
+    return (select(notes)..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future updateNote(Note entry) {
+    return update(notes).replace(entry);
+  }
+
+  Future deleteNote(int id) {
+    return (delete(notes)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future deleteAllNotes() {
+    return delete(notes).go();
+  }
+
+  Future<int> addNote(NotesCompanion entry) {
+    return into(notes).insert(entry);
   }
 }
 
-class DatabaseHelper {
-  // ignore: prefer_typing_uninitialized_variables
-  var database;
+class DatabaseProvider {
+  static final DatabaseProvider _singleton = DatabaseProvider._internal();
 
-  initializeDatabase() async {
-    database = openDatabase(
-      join(await getDatabasesPath(), 'doggie_database.db'),
-      onCreate: (db, version) {
-        return db.execute(
-          'CREATE TABLE notes(id INTEGER PRIMARY KEY, title TEXT, content TEXT, lastUpdate DATA)',
-        );
-      },
-      version: 1,
-    );
+  factory DatabaseProvider() {
+    return _singleton;
   }
 
-  Future<void> insertDog(Note note) async {
-    final db = await database;
-
-    await db.insert(
-      'notes',
-      note.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  // A method that retrieves all the dogs from the notes table.
-  Future<List<Note>> notes() async {
-    final db = await database;
-
-    // Query the table for all The notes.
-    final List<Map<String, dynamic>> maps = await db.query('notes');
-
-    // Convert the List<Map<String, dynamic> into a List<Note>.
-    return List.generate(maps.length, (i) {
-      return Note(
-        id: maps[i]['id'],
-        title: maps[i]['title'],
-        content: maps[i]['content'],
-        lastUpdate: maps[i]['lastUpdate'],
-      );
-    });
-  }
-
-  Future<void> updateNote(Note note) async {
-    // Get a reference to the database.
-    final db = await database;
-
-    await db.update(
-      'notes',
-      note.toMap(),
-      // Ensure that the Dog has a matching id.
-      where: 'id = ?',
-      // Pass the Note's id as a whereArg to prevent SQL injection.
-      whereArgs: [note.id],
-    );
-  }
-
-  Future<void> deleteNote(int id) async {
-    // Get a reference to the database.
-    final db = await database;
-
-    // Remove the Dog from the database.
-    await db.delete(
-      'notes',
-      // Use a `where` clause to delete a specific dog.
-      where: 'id = ?',
-      // Pass the Dog's id as a whereArg to prevent SQL injection.
-      whereArgs: [id],
-    );
-  }
+  DatabaseProvider._internal();
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'comp/sidemenu.dart';
 import 'comp/newdocument.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'dataPersistence/data_persistence.dart';
+import 'package:provider/provider.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -36,45 +36,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool firstChange = true;
-  List<dynamic> infos = [
-    {"id": 1, "title": "tttt", "content": "rrrr", "last_update": "ieri"},
-    {
-      "id": 2,
-      "title": "ttrwer6nkllkntt",
-      "content": "rrjnlerrr",
-      "last_update": "azi"
-    },
-    {
-      "id": 2,
-      "title": "ttrwe5knknrtt",
-      "content": "rrelnrrr",
-      "last_update": "azi"
-    },
-    {
-      "id": 2,
-      "title": "ttrwer1tt",
-      "content": "rrerrooor",
-      "last_update": "azi"
-    },
-    {
-      "id": 2,
-      "title": "ttrwe2rtt",
-      "content": "rrerkmrr",
-      "last_update": "azi"
-    },
-    {
-      "id": 2,
-      "title": "ttrwe3rtt",
-      "content": "rrelnlkrrr",
-      "last_update": "azi"
-    },
-    {
-      "id": 2,
-      "title": "ttrwe4rtt",
-      "content": "rrenlrrr",
-      "last_update": "azi"
-    },
-  ];
   List<Color> widgetColor =
       List.generate(100, (index) => const Color.fromARGB(255, 110, 25, 25));
   List<bool> isSelected = List.generate(100, (index) => false);
@@ -112,6 +73,10 @@ class _MyHomePageState extends State<MyHomePage> {
     ]);
   }
 
+  // Future<void> _getData() async {
+  //   infos = await dbConnect.notes();
+  // }
+
   void _toggleDocument(index) {
     setState(() {
       widgetColor[index] = const Color.fromARGB(255, 25, 76, 110);
@@ -147,109 +112,130 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Future<List<Note>> _loadData() async {
+    List<Note> list = await DatabaseHelper().allNoteEntries;
+    list.forEach((element) {
+      print(element);
+    });
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: FloatingActionButton(
-          onPressed: () => {},
+          onPressed: () => {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const DocumentView(
+                        id: -1,
+                      )),
+            ),
+          },
           tooltip: 'Increment',
           child: const Icon(Icons.add),
           elevation: 12,
         ),
         drawer: const NavDrawer(),
         appBar: appBars[0],
-        body: ListView(
-            padding: const EdgeInsets.only(top: 20),
-            children: <Widget>[
-              Column(
-                //mainAxisAlignment: MainAxisAlignment.center,
-                //crossAxisAlignment: CrossAxisAlignment.center,
-                children: infos.map((document) {
-                  return InkWell(
-                    onLongPress: () =>
-                        {_toggleDocument(infos.indexOf(document))},
-                    onTap: () => {
-                      if (isSelected.contains(true))
-                        {
-                          if (isSelected[infos.indexOf(document)] == true)
-                            {_unToggleDocument(infos.indexOf(document))}
-                          else
-                            {_toggleDocument(infos.indexOf(document))}
-                        }
-                      else
-                        {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => DocumentView(
-                                      document: document,
-                                    )),
-                          ),
-                        }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.only(left: 20),
-                      margin:
-                          const EdgeInsets.only(left: 15, right: 15, top: 20),
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: widgetColor[infos.indexOf(document)],
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color.fromARGB(255, 7, 124, 135)
-                                .withOpacity(0.5),
-                            blurRadius: 7,
-                            spreadRadius: 5,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: <Widget>[
-                              Text(document["title"].toString(),
+        body: FutureBuilder<List<Note>>(
+          future: _loadData(),
+          builder: (context, document) {
+            if (document.hasData) {
+              return ListView.builder(
+                  itemCount: document.data?.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return InkWell(
+                      onLongPress: () => {_toggleDocument(index)},
+                      onTap: () => {
+                        if (isSelected.contains(true))
+                          {
+                            if (isSelected[index] == true)
+                              {_unToggleDocument(index)}
+                            else
+                              {_toggleDocument(index)}
+                          }
+                        else
+                          {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DocumentView(
+                                      id: document.data![index].id)),
+                            ),
+                          }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.only(left: 20),
+                        margin:
+                            const EdgeInsets.only(left: 15, right: 15, top: 20),
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: widgetColor[index],
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color.fromARGB(255, 7, 124, 135)
+                                  .withOpacity(0.5),
+                              blurRadius: 7,
+                              spreadRadius: 5,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: <Widget>[
+                                Text(document.data![index].title.toString(),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w300,
+                                        fontSize: 15),
+                                    textScaleFactor: 1.5),
+                                Row(
+                                  children: <Widget>[
+                                    const Icon(Icons.account_tree_rounded),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                        document.data![index].title != ""
+                                            ? document.data![index].title
+                                                .toString()
+                                            : "",
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w300,
+                                            fontSize: 15),
+                                        textScaleFactor: 1.0),
+                                  ],
+                                )
+                              ],
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(top: 50, right: 20),
+                              child: Text(
+                                  document.data![index].lastUpdate.toString(),
                                   style: const TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w300,
-                                      fontSize: 15),
+                                      fontWeight: FontWeight.w100,
+                                      fontSize: 10),
                                   textScaleFactor: 1.5),
-                              Row(
-                                children: <Widget>[
-                                  const Icon(Icons.account_tree_rounded),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                      document["title"].toString() != ""
-                                          ? document["title"].toString()
-                                          : "",
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w300,
-                                          fontSize: 15),
-                                      textScaleFactor: 1.0),
-                                ],
-                              )
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 50, right: 20),
-                            child: Text(document["last_update"].toString(),
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w100,
-                                    fontSize: 10),
-                                textScaleFactor: 1.5),
-                          )
-                        ],
+                            )
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ]));
+                    );
+                  });
+            } else if (document.hasError) {
+              return const Text("Ooops");
+            }
+            return const CircularProgressIndicator();
+          },
+        ));
   }
 }

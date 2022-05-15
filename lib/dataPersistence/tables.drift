@@ -1,0 +1,7 @@
+CREATE TABLE notes (
+    id INT NOT NULL PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    content TEXT,
+    lastUpdate INT,
+    category TEXT
+);
