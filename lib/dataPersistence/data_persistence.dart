@@ -9,13 +9,13 @@ part 'data_persistence.g.dart';
 @DriftDatabase(
   // relative import for the drift file. Drift also supports `package:`
   // imports
-  include: {'tables.drift'},
+  include: {'db.drift'},
 )
 class AppDb extends _$AppDb {
   AppDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 12;
 }
 
 LazyDatabase _openConnection() {
@@ -24,7 +24,7 @@ LazyDatabase _openConnection() {
     // put the database file, called db.sqlite here, into the documents folder
     // for your app.
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(join(dbFolder.path, 'db.sqlite'));
+    final file = File(join(dbFolder.path, 'newdb.sqlite'));
     return NativeDatabase(file);
   });
 }
@@ -40,39 +40,49 @@ class DatabaseHelper extends AppDb {
 
   DatabaseHelper._internal();
 
-  Future<List<Note>> get allNoteEntries => select(notes).get();
+  Future<List<NotesDData>> get allNoteEntries => select(notesD).get();
 
-  Future<List<Note>> watchEntriesInCategory(String category) {
-    return (select(notes)..where((t) => t.category.equals(category))).get();
+  Future<List<CategoriesDData>> get allCategoryEntries =>
+      select(categoriesD).get();
+
+  Future<List<NotesDData>> watchEntriesInCategory(String category) {
+    return (select(notesD)..where((t) => t.category.equals(category))).get();
   }
 
-  Future<Note> getEntryById(int id) {
-    return (select(notes)..where((t) => t.id.equals(id))).getSingle();
+  Future<NotesDData> getEntryById(int id) {
+    return (select(notesD)..where((t) => t.id.equals(id))).getSingle();
   }
 
-  Future updateNote(Note entry) {
-    return update(notes).replace(entry);
+  Future<CategoriesDData?> getCategByCat(String cat) {
+    return (select(categoriesD)..where((t) => t.category.equals(cat)))
+        .getSingleOrNull();
+  }
+
+  Future updateNote(NotesDData entry) {
+    return update(notesD).replace(entry);
+  }
+
+  Future updateCategory(CategoriesDData entry) {
+    return update(categoriesD).replace(entry);
   }
 
   Future deleteNote(int id) {
-    return (delete(notes)..where((t) => t.id.equals(id))).go();
+    return (delete(notesD)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future deleteCategory(int id) {
+    return (delete(categoriesD)..where((t) => t.id.equals(id))).go();
   }
 
   Future deleteAllNotes() {
-    return delete(notes).go();
+    return delete(notesD).go();
   }
 
-  Future<int> addNote(NotesCompanion entry) {
-    return into(notes).insert(entry);
-  }
-}
-
-class DatabaseProvider {
-  static final DatabaseProvider _singleton = DatabaseProvider._internal();
-
-  factory DatabaseProvider() {
-    return _singleton;
+  Future<int> addNote(NotesDCompanion entry) {
+    return into(notesD).insert(entry);
   }
 
-  DatabaseProvider._internal();
+  Future<int> addCategory(CategoriesDCompanion entry) {
+    return into(categoriesD).insert(entry);
+  }
 }

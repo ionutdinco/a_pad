@@ -1,4 +1,5 @@
 // ignore_for_file: prefer_const_constructors
+import 'package:a_pad/dataPersistence/data_persistence.dart';
 import 'package:a_pad/main.dart';
 import 'package:flutter/material.dart';
 import 'managecategories.dart';
@@ -12,6 +13,10 @@ class NavDrawer extends StatefulWidget {
 
 class _NavDrawerState extends State<NavDrawer> {
   List<String> categories = ["work1", "work2"];
+
+  Future<List<CategoriesDData>> _loadData() async {
+    return await DatabaseHelper().allCategoryEntries;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,14 +59,22 @@ class _NavDrawerState extends State<NavDrawer> {
           SizedBox(
             height: 10,
           ),
-          Column(
-            children: categories.map((categorie) {
-              return ListTile(
-                leading: Icon(Icons.label),
-                title: Text(categorie),
-                onTap: () => {},
+          FutureBuilder<List<CategoriesDData>>(
+            future: _loadData(),
+            builder: (context, category) {
+              return ListView(
+                shrinkWrap: true,
+                children: category.data!
+                    .map(
+                      (data) => ListTile(
+                        leading: Icon(Icons.label),
+                        title: Text(data.category.toString()),
+                        onTap: () => {},
+                      ),
+                    )
+                    .toList(),
               );
-            }).toList(),
+            },
           ),
           ListTile(
             leading: Icon(Icons.edit_note),

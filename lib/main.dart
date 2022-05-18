@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'comp/sidemenu.dart';
 import 'comp/newdocument.dart';
 import 'dataPersistence/data_persistence.dart';
-import 'package:provider/provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,23 +35,33 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool firstChange = true;
-  List<Color> widgetColor =
-      List.generate(100, (index) => const Color.fromARGB(255, 110, 25, 25));
-  List<bool> isSelected = List.generate(100, (index) => false);
+  Map<int, Color> widgetColor = {};
+  Map<int, bool> isSelected = {};
   List<AppBar> appBars = [];
+  bool hideBtn = false;
 
   _MyHomePageState() {
+    _pupulate();
     appBars.addAll([
-      AppBar(title: const Text("aPad"), centerTitle: true, actions: <Widget>[
-        Padding(
-            padding: const EdgeInsets.only(right: 35.0),
-            child: GestureDetector(
-              onTap: () {},
-              child: const Icon(Icons.more_vert),
-            )),
-      ]),
       AppBar(
           title: const Text("aPad"),
+          centerTitle: true,
+          shadowColor: const Color.fromARGB(255, 25, 76, 110),
+          backgroundColor: Colors.amber,
+          elevation: 10,
+          actions: <Widget>[
+            Padding(
+                padding: const EdgeInsets.only(right: 35.0),
+                child: GestureDetector(
+                  onTap: () {},
+                  child: const Icon(Icons.more_vert),
+                )),
+          ]),
+      AppBar(
+          title: const Text("aPad"),
+          shadowColor: const Color.fromARGB(255, 25, 76, 110),
+          elevation: 10,
+          backgroundColor: Colors.amber,
           leading: GestureDetector(
             onTap: () {
               _undoAllSelections();
@@ -64,18 +73,36 @@ class _MyHomePageState extends State<MyHomePage> {
           centerTitle: true,
           actions: <Widget>[
             Padding(
-                padding: const EdgeInsets.only(right: 35.0),
+                padding: const EdgeInsets.only(right: 20.0),
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () async {
+                    final ConfirmAction action =
+                        (await _asyncConfirmDialog(context)) as ConfirmAction;
+                    if (action.name == "Accept") {
+                      _deleteSelectedNotes();
+                      setState(() {});
+                    }
+                    print(action.name);
+                  },
+                  child: const Icon(Icons.delete),
+                )),
+            Padding(
+                padding: const EdgeInsets.only(right: 40.0),
+                child: GestureDetector(
+                  onTap: () async {},
                   child: const Icon(Icons.more_vert),
                 )),
           ]),
     ]);
   }
 
-  // Future<void> _getData() async {
-  //   infos = await dbConnect.notes();
-  // }
+  void _pupulate() async {
+    List<NotesDData> notes = await DatabaseHelper().allNoteEntries;
+    for (var element in notes) {
+      widgetColor[element.id] = const Color.fromARGB(255, 110, 25, 25);
+      isSelected[element.id] = false;
+    }
+  }
 
   void _toggleDocument(index) {
     setState(() {
@@ -99,6 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
     var aux = appBars[0];
     appBars[0] = appBars[1];
     appBars[1] = aux;
+    hideBtn = !hideBtn;
   }
 
   void _undoAllSelections() {
@@ -112,11 +140,16 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Future<List<Note>> _loadData() async {
-    List<Note> list = await DatabaseHelper().allNoteEntries;
-    list.forEach((element) {
-      print(element);
+  void _deleteSelectedNotes() {
+    isSelected.forEach((key, value) {
+      if (value == true) {
+        DatabaseHelper().deleteNote(key);
+      }
     });
+  }
+
+  Future<List<NotesDData>> _loadData() async {
+    List<NotesDData> list = await DatabaseHelper().allNoteEntries;
     return list;
   }
 
@@ -125,22 +158,25 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: FloatingActionButton(
-          onPressed: () => {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const DocumentView(
-                        id: -1,
-                      )),
-            ),
-          },
+          onPressed: hideBtn
+              ? null
+              : () => {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const DocumentView(
+                                id: -1,
+                              )),
+                    ),
+                  },
           tooltip: 'Increment',
           child: const Icon(Icons.add),
           elevation: 12,
+          backgroundColor: hideBtn ? Colors.grey[600] : Colors.amber,
         ),
         drawer: const NavDrawer(),
         appBar: appBars[0],
-        body: FutureBuilder<List<Note>>(
+        body: FutureBuilder<List<NotesDData>>(
           future: _loadData(),
           builder: (context, document) {
             if (document.hasData) {
@@ -148,14 +184,15 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemCount: document.data?.length,
                   itemBuilder: (BuildContext context, int index) {
                     return InkWell(
-                      onLongPress: () => {_toggleDocument(index)},
+                      onLongPress: () =>
+                          {_toggleDocument(document.data![index].id)},
                       onTap: () => {
-                        if (isSelected.contains(true))
+                        if (isSelected.containsValue(true))
                           {
-                            if (isSelected[index] == true)
-                              {_unToggleDocument(index)}
+                            if (isSelected[document.data![index].id] == true)
+                              {_unToggleDocument(document.data![index].id)}
                             else
-                              {_toggleDocument(index)}
+                              {_toggleDocument(document.data![index].id)}
                           }
                         else
                           {
@@ -173,7 +210,10 @@ class _MyHomePageState extends State<MyHomePage> {
                             const EdgeInsets.only(left: 15, right: 15, top: 20),
                         height: 80,
                         decoration: BoxDecoration(
-                          color: widgetColor[index],
+                          color: Color(
+                              widgetColor[document.data![index].id] != null
+                                  ? widgetColor[document.data![index].id]!.value
+                                  : Colors.amber.value),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
@@ -238,4 +278,32 @@ class _MyHomePageState extends State<MyHomePage> {
           },
         ));
   }
+}
+
+enum ConfirmAction { Cancel, Accept }
+Future<ConfirmAction?> _asyncConfirmDialog(BuildContext context) async {
+  return showDialog<ConfirmAction>(
+    context: context,
+    barrierDismissible: false, // user must tap button for close dialog!
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Delete This Contact?'),
+        content: const Text('This will delete the contact from your device.'),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop(ConfirmAction.Cancel);
+            },
+          ),
+          TextButton(
+            child: const Text('Delete'),
+            onPressed: () {
+              Navigator.of(context).pop(ConfirmAction.Accept);
+            },
+          )
+        ],
+      );
+    },
+  );
 }

@@ -1,7 +1,6 @@
 import 'package:a_pad/main.dart';
 import 'package:drift/drift.dart' as d;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../dataPersistence/data_persistence.dart';
 
 class DocumentView extends StatefulWidget {
@@ -19,6 +18,7 @@ class _DocumentState extends State<DocumentView> {
   bool hasData = false;
   int selectionStart = -1;
   int selectionEnd = -1;
+  int newId = -1;
 
   void _backToMenu() {
     //Navigator.pop(context);
@@ -31,27 +31,33 @@ class _DocumentState extends State<DocumentView> {
     );
   }
 
-  Future<Note> _getNote() async {
-    var x = await DatabaseHelper().getEntryById(widget.id);
-    print(x);
+  Future<NotesDData> _getNote() async {
+    var x = await DatabaseHelper()
+        .getEntryById(widget.id != -1 ? widget.id : newId);
     return x;
   }
 
+  void _refreshId() async {
+    List<NotesDData> notes = await DatabaseHelper().allNoteEntries;
+    newId = notes.last.id;
+  }
+
   void _addNote() async {
-    setState(() async {
+    setState(() {
       if (hasData) {
-        Note note = Note(
-            id: widget.id,
+        NotesDData note = NotesDData(
+            id: widget.id != -1 ? widget.id : newId,
             title: _controllerTitle.text,
             content: _controllerContent.text,
             lastUpdate: 12,
             category: "cat");
-        await DatabaseHelper().updateNote(note);
+        DatabaseHelper().updateNote(note);
       } else {
-        await DatabaseHelper().addNote(NotesCompanion(
+        DatabaseHelper().addNote(NotesDCompanion(
           title: d.Value(_controllerTitle.text),
           content: d.Value(_controllerContent.text),
         ));
+        _refreshId();
       }
     });
   }
@@ -63,8 +69,6 @@ class _DocumentState extends State<DocumentView> {
       TextSelection selection = _controllerContent.selection;
       if (selection.start > -1) selectionStart = selection.start;
       if (selection.end > -1) selectionEnd = selection.end;
-      print(selectionStart);
-      print(selectionEnd);
     });
   }
 
@@ -93,7 +97,7 @@ class _DocumentState extends State<DocumentView> {
                     ),
                   )),
             ]),
-        body: FutureBuilder<Note>(
+        body: FutureBuilder<NotesDData>(
           future: _getNote(),
           builder: (context, document) {
             document.hasData ? hasData = true : hasData = false;
@@ -126,7 +130,7 @@ class _DocumentState extends State<DocumentView> {
                       ),
                       controller: _controllerTitle
                         ..text =
-                            (document.hasData ? document.data?.title : "pula")!,
+                            (document.hasData ? document.data?.title : "")!,
                     ),
                   ),
                   Padding(
@@ -143,9 +147,8 @@ class _DocumentState extends State<DocumentView> {
                       maxLines: 15, // allow user to enter 5 line in textfield
                       keyboardType: TextInputType.multiline,
                       controller: _controllerContent
-                        ..text = (document.hasData
-                            ? document.data?.content
-                            : "pula")!,
+                        ..text =
+                            (document.hasData ? document.data?.content : "")!,
                       enableInteractiveSelection: true,
                     ),
                   ),

@@ -1,7 +1,12 @@
-CREATE TABLE notes (
+CREATE TABLE notes_d (
     id INT NOT NULL PRIMARY KEY AUTOINCREMENT,
     title TEXT,
     content TEXT,
     lastUpdate INT,
+    category TEXT
+);
+
+CREATE TABLE categories_d (
+    id INT NOT NULL PRIMARY KEY AUTOINCREMENT,
     category TEXT
 );
